@@ -1,0 +1,282 @@
+#Importing the Libraries
+import pandas as pd
+import numpy as np
+import matplotlib
+import matplotlib.pyplot as plt
+import seaborn as sns
+import logging
+
+logging.basicConfig(level=logging.ERROR, 
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+%matplotlib inline
+sns.set_style('darkgrid')
+matplotlib.rcParams['font.size'] = 14
+matplotlib.rcParams['figure.figsize'] = (9, 5)
+matplotlib.rcParams['figure.facecolor'] = '#00000000'
+
+# Dataframe creation using pandas read cvs function.
+df = pd.read_csv('garments_worker_productivity.csv')
+
+#Data Inspection
+# Checking the shape, the data types, and the summary statistics
+print(df.shape)
+print(df.dtypes)
+print(df.describe())
+
+#Data Cleansing
+# removing the duplicates
+# For missing values, we add mean value. 
+# this dataset didn't have any missing values but this function will take care of handling missing values if the dataset gets changed in future.
+def data_cleansing(data):
+    if data.duplicated().sum() > 0:
+        data.drop_duplicates(inplace=True)
+        modifiedDf = data
+    
+    
+    elif data.isna().sum().any() > 0:  
+        # Separate numeric and non-numeric columns
+        numeric_cols = data.select_dtypes(include=[np.number]).columns
+        non_numeric_cols = data.select_dtypes(exclude=[np.number]).columns
+
+        # Fill missing values in numeric columns with the mean
+        data.loc[:, numeric_cols].fillna(data[numeric_cols].mean(), inplace=True)
+        
+        # Fill missing values in non-numeric columns with most frequent value
+        data.loc[:, non_numeric_cols].fillna(data[non_numeric_cols].mode().iloc[0], inplace=True)
+        
+        modifiedDf = data  
+    
+    else:
+        modifiedDf = data  
+    
+    return modifiedDf  
+
+# removing the employee_id column from all analysis as it is not needed 
+df=data_cleansing(df)
+df.drop(columns=['Employee_ID'],inplace=True)
+
+#Data Visualization- Histogram
+df.hist(bins=10, figsize=(10, 5))
+plt.tight_layout()
+plt.show()
+
+for column in df.select_dtypes(include=['float64', 'int64']).columns:
+    sns.kdeplot(df[column], fill=True, label=column)
+    plt.title(f'Density Plots of {column}')
+    plt.xlabel('Value')
+    plt.ylabel('Density')
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+#Bar plot for categorical features
+#creating bar plot for categorical_features:
+categorical_features= ['Gender', 'Department', 'Job_Title']
+
+for feature in categorical_features:
+   
+    plt.figure(figsize=(10, 6))
+    sns.countplot(x=feature, data=df)
+    plt.title(f'Bar Plot of {feature}')
+    plt.xlabel(f'{feature}')
+    plt.ylabel('Count')
+    plt.show()
+
+#Pie chart for categories
+# Sample categorical features
+categorical_features = ['Gender', 'Department', 'Job_Title']
+
+# Loop through each categorical feature to create pie charts
+for feature in categorical_features:
+    plt.figure(figsize=(10, 6))
+    counts = df[feature].value_counts()
+    plt.pie(counts, labels=counts.index, autopct='%1.1f%%',startangle=40)
+    plt.title(f'Pie Chart of {feature}')
+    plt.axis('equal')  # Equal aspect ratio ensures the pie is drawn as a circle.
+    plt.tight_layout()
+    plt.show()
+
+# Creating box plots to identify outliers and understand the spread of the data.
+numerical_features = ['Age', 'Years_at_Company', 'Satisfaction_Level', 'Average_Monthly_Hours', 'Promotion_Last_5Years', 'Salary', 'Attrition' ]
+for feature in numerical_features:
+    plt.figure(figsize=(8, 6))
+    sns.boxplot(x=df[feature])
+    plt.title(f'Box Plot of {feature}')
+    plt.xlabel(feature)
+    plt.show()
+
+#Scatter plots
+# Between Age and Years at company
+sns.scatterplot(x='Age', y='Years_at_Company', data=df)
+plt.title('Scatter Plot of Age vs Years_at_Company')
+plt.xlabel('Age')
+plt.ylabel('Years_at_Company')
+plt.show()
+
+# Scatter plot between Years at Company and Satisfaction Level
+sns.scatterplot(x='Years_at_Company', y='Satisfaction_Level', data=df)
+plt.title('Scatter Plot of Years at Company vs Satisfaction Level')
+plt.xlabel('Years at Company')
+plt.ylabel('Satisfaction Level')
+plt.show()
+
+# Scatter plot between Satisfaction Level and Average Monthly Hours
+sns.scatterplot(x='Satisfaction_Level', y='Average_Monthly_Hours', data=df)  
+plt.title('Scatter Plot of Satisfaction Level vs Average Monthly Hours')
+plt.xlabel('Satisfaction Level')
+plt.ylabel('Average Monthly Hours')
+plt.show()
+
+# Scatter plot between Average Monthly Hours and Promotion in the Last 5 Years
+sns.scatterplot(x='Average_Monthly_Hours', y='Promotion_Last_5Years', data=df)  # Correct column names
+plt.title('Scatter Plot of Average Monthly Hours vs Promotion in Last 5 Years')
+plt.xlabel('Average Monthly Hours')
+plt.ylabel('Promotion in Last 5 Years')
+plt.show()
+
+# Scatter plot between Salary and Attrition
+sns.scatterplot(x='Salary', y='Attrition', data=df)
+plt.title('Scatter Plot of Salary vs Attrition')
+plt.xlabel('Salary')
+plt.ylabel('Attrition')
+plt.show()
+
+#Calculating summary statistics
+def summarize_statistics(df):
+    """
+    Calculate and print summary statistics for each column in the given DataFrame.
+    
+    Parameters:
+    df (pd.DataFrame): The DataFrame to analyze.
+    
+    Returns:
+    pd.DataFrame: A DataFrame containing the summary statistics.
+    """
+    # Ensure input is a DataFrame
+    if not isinstance(df, pd.DataFrame):
+        raise ValueError("Input must be a Pandas DataFrame")
+
+    # Create a dictionary to hold the statistics
+    summary = {
+        "Mean": df.mean(),
+        "Median": df.median(),
+        "Standard Deviation": df.std(),
+        "Minimum": df.min(),
+        "Maximum": df.max(),
+        "25th Percentile": df.quantile(0.25),
+        "50th Percentile": df.quantile(0.50),
+        "75th Percentile": df.quantile(0.75),
+        "Count": df.count()
+    }
+    
+    # Create a DataFrame from the dictionary
+    summary_df = pd.DataFrame(summary)
+    
+    return summary_df
+
+summary_statistics=summarize_statistics(df.select_dtypes(include=['number']))
+print(summary_statistics)
+
+#Groupings of the data
+def aggFunc1(df):
+    print("Budget on Employees")
+    grouped_data = df[['Gender','Job_Title','Salary','Department']]
+    grouped_data = grouped_data.groupby(['Gender','Job_Title', 'Department']).agg(Budget_On_Employees=('Salary','sum'))
+    # result = grouped_data.sum()
+    print(grouped_data)
+
+print(aggFunc1(df))
+
+# Number of promotions in the last 5 years over different departments
+def aggFunc2(df):
+    print("Number of promotions in the last 5 years over different departments")
+    grouped_data = df[['Department','Job_Title','Gender','Promotion_Last_5Years','Salary']]
+    grouped_data = grouped_data.groupby(['Department','Job_Title','Gender']).agg(Total_promotions=('Promotion_Last_5Years','sum'),Number_of_employees=('Salary','count'))
+    grouped_data['Percentage_of_Promotions'] = (grouped_data['Total_promotions']/grouped_data['Number_of_employees'])*100
+    grouped_data['Percentage_of_Promotions'] =    grouped_data['Percentage_of_Promotions'].round(2)
+    return grouped_data
+    
+print(aggFunc2(df))
+
+#Correlation
+#  employee attritions based on promotion status
+def count_attrition(group, promoted):
+    return ((group['Attrition'] == 1) & (group['Promotion_Last_5Years'] == promoted)).sum()
+
+# Aggregation function to calculate attrition counts based on promotion status
+def attrition_by_promotion_status(df, promoted):
+    promotion_status = "before" if promoted == 0 else "after"
+    print(f"Number of employee attrition {promotion_status} promotion")
+    
+    #   group data
+    grouped_data = df[['Department', 'Gender',  'Attrition', 'Promotion_Last_5Years']]
+    grouped_data = grouped_data.groupby(['Department', 'Gender'])
+    
+    # Apply the counting function and reset the index
+    grouped_data = grouped_data.apply(lambda group: count_attrition(group, promoted)).reset_index(name='Req_count')
+    return grouped_data
+
+# attrition before promotion
+attrition_before_promotion = attrition_by_promotion_status(df, promoted=0)
+print(attrition_before_promotion)
+#attrition after promotion
+attrition_after_promotion = attrition_by_promotion_status(df, promoted=1)
+
+print(attrition_after_promotion)
+
+##feature analysis
+# Pair plots
+sns.pairplot(df[['Age','Salary','Years_at_Company','Attrition']])
+plt.show()
+
+# # Pivot tables
+# pivot_table = df.pivot_table(index='category_column', values='numerical_column', aggfunc='mean')
+# print(pivot_table)
+
+# Select specific columns
+columns_of_interest = ['Age', 'Years_at_Company', 'Satisfaction_Level', 'Average_Monthly_Hours', 'Promotion_Last_5Years', 'Salary', 'Attrition']
+df_subset = df[columns_of_interest]
+correlation_matrix = df_subset.corr()
+
+# Extract correlations with 'Attrition' and plot
+attrition_corr = correlation_matrix['Attrition'].drop('Attrition')  # Exclude self-correlation
+plt.figure(figsize=(10, 6))
+attrition_corr.plot(kind='bar', color='skyblue')
+plt.title('Correlation of Features with Attrition')
+plt.ylabel('Correlation Coefficient')
+plt.xticks(rotation=45)
+plt.show()
+
+# Visualize the relationships between Attrition and each of the features using scatter plots
+for feature in columns_of_interest[:-1]:  # Exclude 'Attrition' itself
+    plt.figure(figsize=(8, 6))
+    sns.scatterplot(x=feature, y='Attrition', data=df, hue='Attrition', palette='coolwarm', alpha=0.7)
+    plt.title(f'Scatter Plot of {feature} vs. Attrition')
+    plt.xlabel(feature)
+    plt.ylabel('Attrition (1 = Yes, 0 = No)')
+    plt.show()
+
+
+correlation_results = {
+    "1. Promotion_Last_5Years": round(correlation_matrix.loc['Promotion_Last_5Years', 'Attrition'], 3),
+    "2. Years_at_Company": round(correlation_matrix.loc['Years_at_Company', 'Attrition'], 3),
+    "3. Age": round(correlation_matrix.loc['Age', 'Attrition'], 3),
+    "4. Satisfaction_Level": round(correlation_matrix.loc['Satisfaction_Level', 'Attrition'], 3),
+    "5. Average_Monthly_Hours": round(correlation_matrix.loc['Average_Monthly_Hours', 'Attrition'], 3),
+    "6. Salary": round(correlation_matrix.loc['Salary', 'Attrition'], 3),
+}
+
+print("Here are the correlations of different features with Attrition:")
+for key, value in correlation_results.items():
+    print(f"{key}: {value}")
+
+''' the correlations of different features with Attrition:
+1. Promotion_Last_5Years: 0.018
+2. Years_at_Company: 0.003
+3. Age: -0.009
+4. Satisfaction_Level: -0.01
+5. Average_Monthly_Hours: -0.024
+6. Salary: -0.038'''
+
